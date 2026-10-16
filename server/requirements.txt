@@ -1,0 +1,8 @@
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-multipart>=0.0.9
+ultralytics>=8.3
+opencv-python>=4.9
+numpy>=1.26
+pillow>=10.0
+# torch ставить отдельно с CUDA: https://pytorch.org/get-started/locally/

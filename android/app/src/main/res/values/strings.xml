@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Томаты</string>
+    <string name="server_hint">http://192.168.0.10:8000</string>
+    <string name="check">Проверить</string>
+    <string name="camera">📷 Снять</string>
+    <string name="gallery">🖼 Галерея</string>
+    <string name="idle">Сфотографируйте томаты или выберите фото</string>
+</resources>

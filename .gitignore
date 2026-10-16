@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Веса и артефакты обучения
+models/*
+!models/README.md
+*.pt
+*.onnx
+runs/
+runs_*.log
+
+# Данные (большие файлы не коммитим; hidden_test — не показываем никому)
+data/raw/*
+data/hidden_test/*
+# Собирается ml/prepare_dataset.py из data/raw
+data/tomato_yolo/
+!data/**/.gitkeep
+
+# Android
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.kotlin/
+android/app/build/
+*.apk
+
+# Obsidian (личные настройки окна)
+brain/.obsidian/workspace*.json
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
