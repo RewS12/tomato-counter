@@ -1,0 +1,14 @@
+AGROVISION — СЕРВЕРНЫЙ АРХИВ
+
+1. Распакуйте архив на сервер с Docker и Docker Compose.
+2. Скопируйте .env.server.example в .env.
+3. Измените AGROVISION_BASIC_PASSWORD на свой сложный пароль.
+4. Запустите: docker compose up -d --build
+5. Для доступа с собственного ПК: ssh -L 8000:127.0.0.1:8000 user@SERVER
+6. Откройте http://127.0.0.1:8000; вход по логину и паролю из .env.
+
+ПУБЛИЧНЫЙ ДОМЕН (HTTPS): укажите AGROVISION_DOMAIN в .env, настройте DNS и 80/443, затем:
+docker compose -f docker-compose.yml -f docker-compose.public.yml up -d --build
+
+НАСТРОЙКА ИИ: docs/КАК_ПОДКЛЮЧИТЬ_ИИ.md и Документы/03_Развертывание_и_подключение_ИИ.docx.
+По умолчанию работает OpenCV. YOLO без реальных обученных весов не включён.

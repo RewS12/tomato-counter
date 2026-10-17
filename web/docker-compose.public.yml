@@ -1,0 +1,20 @@
+# Public HTTPS deployment: requires DNS A record, open ports 80/443, a strong Basic password.
+services:
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    environment:
+      AGROVISION_DOMAIN: ${AGROVISION_DOMAIN:?Set AGROVISION_DOMAIN in .env}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      agrovision:
+        condition: service_healthy
+volumes:
+  caddy_data:
+  caddy_config:

@@ -8,21 +8,24 @@
 ./gradlew assembleDebug          # → app/build/outputs/apk/debug/app-debug.apk
 ./gradlew installDebug           # сразу на телефон по USB (включить отладку по USB)
 ```
+- ADB без Android Studio: `../tools/platform-tools/adb.exe` (скачивается локально, демон уже запущен).
+- По Wi-Fi: включить «Отладка по Wi-Fi» на телефоне, затем `adb pair <IP>:<порт>`, ввести код и `adb connect <IP>:<порт>`.
+- `./gradlew installDebug` работает и на подключённом по Wi-Fi устройстве.
 - Нужны Android SDK (API 36) и JDK 17+ (подойдёт `jbr` из Android Studio: `JAVA_HOME="C:/Program Files/Android/Android Studio/jbr"`).
-- `local.properties` — путь к SDK, через **прямые слэши**: `sdk.dir=C:/Users/<имя>/AppData/Local/Android/Sdk` (обратные слэши ломают сборку).
+- `local.properties` — путь к SDK, через **прямые слэши**: `sdk.dir=C:/Users/<имя>/AppData/Local/Android/Sdk` (обратные слэши ломают сборку). В этом проекте SDK поставлен локально в `tools/android-sdk`.
 - В пути проекта кириллица → в `gradle.properties` стоит `android.overridePathCheck=true`.
-- Стек: AGP 9.1 (встроенный Kotlin), Gradle 9.3.1, minSdk 26 (Android 8), без Compose.
+- Стек: AGP 9.1 (встроенный Kotlin), Gradle 9.3.1, minSdk 26 (Android 8), Material 3 (View system), без Compose.
 
 ## Использование
-1. Ноутбук: `python -m uvicorn app.main:app --host 0.0.0.0 --port 8000` из `server/`.
-2. Телефон и ноутбук — в одной сети (надёжнее всего: хот-спот с телефона).
-3. В приложении ввести IP ноутбука (`ipconfig` → IPv4). Можно просто `192.168.43.5` — `http://` и `:8000` добавятся сами. **Проверить** → «Сервер OK».
+1. Бэкенд: `cd server && docker compose up -d --build` (публичный адрес — `https://agro.setly.space/android-api`).
+2. Телефон и ноутбук — в одной сети (для локального IP; надёжнее всего: хот-спот с телефона).
+3. Адрес уже подставлен — `https://agro.setly.space/android-api`. Изменить его можно на вкладке **«Сервер»**; для локальной сети введите IP ноутбука (`ipconfig` → IPv4) — `http://` и `:8002` добавятся сами. **Проверить** → «Сервер OK».
 4. **📷 Снять** или **🖼 Галерея** → рамки: красная = зрелый, зелёная = незрелый, число = уверенность.
 
 ## Как устроено
 | Файл | Что |
 |---|---|
-| `MainActivity.kt` | экран, камера (системное приложение, разрешение CAMERA не нужно), фотопикер, сохранение адреса |
+| `MainActivity.kt` | экран анализа, вкладки «Сервер» и «О проекте», камера (системное приложение), фотопикер, сохранение адреса |
 | `DetectApi.kt` | HTTP: `/health`, `/detect` (multipart), понятные тексты ошибок сети |
 | `ImageUtils.kt` | поворот по EXIF, уменьшение до 1280 px, JPEG, отрисовка рамок |
 

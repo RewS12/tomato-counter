@@ -5,6 +5,7 @@
 | Папка | Что |
 |---|---|
 | `server/` | FastAPI + YOLO, `POST /detect` — см. [server/README.md](server/README.md) |
+| `web/` | AgroVision: сайт + PWA-кабинет (FastAPI + OpenCV + SQLite), см. [web/README.md](web/README.md) |
 | `android/` | Kotlin-клиент (камера / галерея → сервер) |
 | `ml/` | дообучение YOLO и оценка точности |
 | `data/` | датасеты, демо-фото, скрытый тест |

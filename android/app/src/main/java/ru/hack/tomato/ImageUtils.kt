@@ -18,7 +18,7 @@ object ImageUtils {
     /** Сколько пикселей по длинной стороне отправляем на сервер (модель всё равно работает на 640). */
     const val MAX_SIDE = 1280
 
-    private val COLORS = mapOf("ripe" to Color.rgb(230, 40, 40), "unripe" to Color.rgb(40, 180, 40))
+    private val COLORS = mapOf("ripe" to Color.rgb(255, 107, 0), "unripe" to Color.rgb(0, 166, 81))
 
     /** Читает фото, поворачивает по EXIF и уменьшает. Сервер получает уже «прямой» кадр без EXIF. */
     fun loadUpright(context: Context, uri: Uri): Bitmap {

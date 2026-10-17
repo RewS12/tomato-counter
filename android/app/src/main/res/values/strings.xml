@@ -1,8 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Томаты</string>
-    <string name="server_hint">http://192.168.0.10:8000</string>
-    <string name="check">Проверить</string>
-    <string name="camera">📷 Снять</string>
-    <string name="gallery">🖼 Галерея</string>
-    <string name="idle">Сфотографируйте томаты или выберите фото</string>
+    <string name="app_name">AgroVision</string>
+    <string name="brand_agro">Agro</string>
+    <string name="brand_vision">Vision</string>
+    <string name="brand_letter">A</string>
+    <string name="demo_badge">DEMO</string>
+
+    <string name="kicker_analysis">ВИЗУАЛЬНЫЙ АНАЛИЗ</string>
+    <string name="title_analysis">Считайте томаты по фото</string>
+    <string name="subtitle_analysis">Загрузите снимок — сервер найдёт видимые плоды и разделит их на зрелые и незрелые.</string>
+
+    <string name="capture_title">Сфотографировать томаты</string>
+    <string name="capture_subtitle">Камера · одно фото</string>
+    <string name="gallery">Выбрать из галереи</string>
+
+    <string name="server_label">СЕРВЕР</string>
+    <string name="change">Изменить</string>
+    <string name="result_kicker">РЕЗУЛЬТАТ</string>
+    <string name="empty_title">Здесь появится результат</string>
+    <string name="empty_text">Сфотографируйте томаты или выберите готовое фото из галереи.</string>
+    <string name="metric_total">Всего</string>
+    <string name="metric_ripe">Зрелых</string>
+    <string name="metric_unripe">Незрелых</string>
+    <string name="tip_title">Совет</string>
+    <string name="tip_text">Фотографируйте плоды крупно, при хорошем свете и без сильных перекрытий — так подсчёт будет точнее.</string>
+
+    <string name="server_kicker">ПОДКЛЮЧЕНИЕ</string>
+    <string name="server_title">Сервер анализа</string>
+    <string name="server_subtitle">Укажите адрес API, к которому обращается приложение.</string>
+    <string name="server_hint">https://agro.setly.space/android-api</string>
+    <string name="server_field_hint">Адрес API</string>
+    <string name="check">Проверить подключение</string>
+    <string name="reset_server">Сбросить на публичный сервер</string>
+    <string name="server_note_title">Адреса</string>
+    <string name="server_note_text">Публичный: https://agro.setly.space/android-api\nЛокальный: http://IP:8002</string>
+    <string name="server_status_idle">Подключение ещё не проверено</string>
+
+    <string name="about_kicker">О ПРОЕКТЕ</string>
+    <string name="about_title">AgroVision</string>
+    <string name="about_text">Демонстрационный MVP: фото уходит на сервер, модель находит видимые томаты, а приложение показывает рамки и счётчики.</string>
+    <string name="about_steps_title">КАК ЭТО РАБОТАЕТ</string>
+    <string name="about_steps_text">1. Сделайте фото или выберите изображение.\n2. Сервер обработает снимок.\n3. Проверьте рамки и сохраните результат.</string>
+    <string name="open_site">Открыть сайт проекта</string>
+    <string name="about_note">Цвет и рамки — визуальная подсказка, а не подтверждение зрелости или безопасности. Результат стоит проверять вручную.</string>
+
+    <string name="nav_analysis">Анализ</string>
+    <string name="nav_server">Сервер</string>
+    <string name="nav_about">О проекте</string>
+
+    <string name="idle">Сделайте фото или выберите изображение — результат появится здесь.</string>
 </resources>

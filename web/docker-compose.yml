@@ -1,0 +1,27 @@
+services:
+  agrovision:
+    build:
+      context: .
+      args:
+        INSTALL_AI: ${AGROVISION_INSTALL_AI:-false}
+    restart: unless-stopped
+    ports:
+      - "${AGROVISION_PORT:-8003}:8000"
+    environment:
+      AGROVISION_REQUIRE_AUTH: "1"
+      AGROVISION_BASIC_USER: ${AGROVISION_BASIC_USER:?Set AGROVISION_BASIC_USER in .env}
+      AGROVISION_BASIC_PASSWORD: ${AGROVISION_BASIC_PASSWORD:?Set AGROVISION_BASIC_PASSWORD in .env}
+      AGROVISION_DETECTOR: ${AGROVISION_DETECTOR:-opencv}
+      AGROVISION_YOLO_WEIGHTS: ${AGROVISION_YOLO_WEIGHTS:-models/tomato_best.pt}
+      AGROVISION_YOLO_CONF: ${AGROVISION_YOLO_CONF:-0.30}
+    volumes:
+      - agrovision_data:/app/runtime
+      - ./models:/app/models:ro
+    healthcheck:
+      test: ["CMD", "python", "-m", "backend.healthcheck"]
+      interval: 30s
+      timeout: 6s
+      retries: 4
+      start_period: 30s
+volumes:
+  agrovision_data:

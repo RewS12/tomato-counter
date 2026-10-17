@@ -1,0 +1,4 @@
+{$AGROVISION_DOMAIN} {
+    encode zstd gzip
+    reverse_proxy agrovision:8000
+}

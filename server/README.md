@@ -3,6 +3,17 @@
 FastAPI + YOLO. Телефон отправляет фото → получает найденные томаты и сводку «зрелые / незрелые».
 
 ## Запуск
+
+### Docker (рекомендуется)
+```bash
+cd server
+docker compose up -d --build      # локально http://localhost:8002
+```
+- Снаружи: `https://agro.setly.space/android-api` → Traefik (147.45.141.224) → WireGuard → `192.168.2.5:8002`. Сайт проекта — в корне `https://agro.setly.space/`.
+- Веса монтируются из `../models`; при первом старте `yolo11n.pt` скачается туда автоматически.
+- Логи: `docker compose logs -f`, остановка: `docker compose down`.
+
+### Без Docker
 ```bash
 pip install -r requirements.txt          # torch с CUDA ставить отдельно
 python -m uvicorn app.main:app --host 0.0.0.0 --port 8000

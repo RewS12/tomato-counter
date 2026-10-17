@@ -33,18 +33,29 @@ class ApiException(message: String) : Exception(message)
 
 /** Клиент сервера детекции (server/app/main.py). */
 object DetectApi {
-    private const val DEFAULT_PORT = 8000
+    private const val DEFAULT_PORT = 8002
+    private val IPV4 = Regex("""\d{1,3}(\.\d{1,3}){3}""")
 
-    /** «192.168.1.5» → «http://192.168.1.5:8000». */
+    /**
+     * «192.168.1.5» → «http://192.168.1.5:8002».
+     * «agro.setly.space/android-api» → «https://agro.setly.space/android-api» (без лишнего порта).
+     */
     fun normalizeUrl(input: String): String {
         var s = input.trim().trimEnd('/')
         if (s.isEmpty()) throw ApiException("Введите адрес сервера")
-        if (!s.contains("://")) s = "http://$s"
+        if (!s.contains("://")) {
+            val host = Uri.parse("http://$s").host.orEmpty().lowercase()
+            s = if (isLocalHost(host)) "http://$s" else "https://$s"
+        }
         val uri = Uri.parse(s)
-        if (uri.host.isNullOrEmpty()) throw ApiException("Неверный адрес: $input")
-        if (uri.port == -1) s = "${uri.scheme}://${uri.host}:$DEFAULT_PORT"
-        return s
+        val host = uri.host
+        if (host.isNullOrEmpty()) throw ApiException("Неверный адрес: $input")
+        if (uri.port != -1 || !isLocalHost(host.lowercase())) return s
+        return "${uri.scheme}://$host:$DEFAULT_PORT"
     }
+
+    private fun isLocalHost(host: String): Boolean =
+        host == "localhost" || !host.contains('.') || host.endsWith(".local") || IPV4.matches(host)
 
     suspend fun health(baseUrl: String): String = request {
         val conn = open("$baseUrl/health", timeoutMs = 5_000)

@@ -1,0 +1,1 @@
+Необязательно. Для YOLO разместите обученные на томатах веса tomato_best.pt в этой папке. Без них оставьте AGROVISION_DETECTOR=opencv.

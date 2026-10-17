@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="white">#FFFFFFFF</color>
+    <color name="ink">#FF151515</color>
+    <color name="muted">#FF686868</color>
+    <color name="blue">#FF2C6EF2</color>
+    <color name="blue_dark">#FF1154DD</color>
+    <color name="blue_soft">#FFEEF3FF</color>
+    <color name="green">#FF00A651</color>
+    <color name="green_soft">#FFE6F7EB</color>
+    <color name="orange">#FFFF6B00</color>
+    <color name="orange_soft">#FFFFF0DF</color>
+    <color name="light">#FFF5F6F7</color>
+    <color name="line">#FFE5E7EB</color>
+    <color name="white_80">#CCFFFFFF</color>
+    <color name="white_ripple">#33FFFFFF</color>
+</resources>

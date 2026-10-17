@@ -1,0 +1,2 @@
+# Only required for OPTIONAL custom YOLO model. Check AGPL-3.0 / commercial licensing.
+ultralytics>=8.3,<9

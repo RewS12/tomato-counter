@@ -28,6 +28,11 @@ android/.kotlin/
 android/app/build/
 *.apk
 
+# Android platform-tools (скачиваются локально)
+tools/platform-tools/
+tools/android-sdk/
+tools/*.zip
+
 # Obsidian (личные настройки окна)
 brain/.obsidian/workspace*.json
 
