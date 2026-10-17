@@ -3,7 +3,8 @@
 Сюда кладём веса (`*.pt`). В git не попадают.
 
 - `yolo11n.pt` — предобученная COCO, **заглушка** (скачивается автоматически при первом запуске сервера).
-- `tomato_v1.pt` — наша дообученная модель (ripe/unripe). Скачать из релиза:
+- `tomato_v2.pt` — **по умолчанию**, v1 + негативы (не путает яблоки с томатами). Обучить: `ml/README.md`.
+- `tomato_v1.pt` — первая версия, только томаты. Скачать из релиза:
   ```bash
   gh release download weights-v1 --repo RewS12/tomato-counter --pattern tomato_v1.pt --dir models
   ```

@@ -17,7 +17,7 @@ python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
 ## Настройки (переменные окружения)
 | Переменная | По умолчанию | Что |
 |---|---|---|
-| `MODEL_PATH` | `models/tomato_v1.pt`, если есть, иначе `models/yolo11n.pt` | веса модели |
+| `MODEL_PATH` | первый найденный: `models/tomato_v2.pt` → `tomato_v1.pt` → `yolo11n.pt` | веса модели |
 | `CONF` | 0.25 | порог уверенности |
 | `IOU` | 0.5 | порог NMS (важно для перекрытий) |
 | `IMGSZ` | 640 | размер входа модели |

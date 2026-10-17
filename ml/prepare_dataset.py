@@ -3,10 +3,15 @@
 Сведение классов (ADR-001): полностью зрелый → ripe; полузрелый и зелёный → unripe.
 Фото уменьшаются до MAX_SIDE (оригиналы Laboro 4032 px — обучение всё равно на 640).
 
+Негативы — фото НЕ-томатов (яблоки, апельсины...) из data/raw/negatives/**: попадают в датасет
+с пустой разметкой, чтобы модель не принимала любой круглый плод за томат.
+Источники: ml/fetch_negatives.py (COCO) и data/raw/negatives/own/ — свои снимки, кладите туда.
+
     python ml/prepare_dataset.py
 """
 import json
 import shutil
+import zlib
 from collections import Counter
 from pathlib import Path
 
@@ -15,6 +20,8 @@ from PIL import Image, ImageOps
 ROOT = Path(__file__).resolve().parents[1]
 RAW = ROOT / "data" / "raw"
 OUT = ROOT / "data" / "tomato_yolo"
+NEGATIVES = RAW / "negatives"
+NEG_VAL_SHARE = 0.15
 MAX_SIDE = 1280
 CLASSES = ["ripe", "unripe"]
 
@@ -22,8 +29,6 @@ CLASSES = ["ripe", "unripe"]
 SOURCES = [
     ("laboro", RAW / "laboro/laboro_tomato/annotations/train.json", RAW / "laboro/laboro_tomato/train", "train"),
     ("laboro", RAW / "laboro/laboro_tomato/annotations/test.json", RAW / "laboro/laboro_tomato/test", "val"),
-    ("tomatod", RAW / "tomatod/tomatOD_train.json", RAW / "tomatod/images", "train"),
-    ("tomatod", RAW / "tomatod/tomatOD_val.json", RAW / "tomatod/images", "val"),
 ]
 
 
@@ -75,6 +80,19 @@ def convert(source: str, ann_path: Path, img_dir: Path, split: str, stats: Count
         stats[f"{split}_images"] += 1
 
 
+def add_negatives(stats: Counter) -> None:
+    """Фото без томатов → пустой .txt. Сплит детерминированный по имени файла."""
+    files = sorted(p for p in NEGATIVES.rglob("*") if p.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp"})
+    for src in files:
+        split = "val" if zlib.crc32(src.name.encode()) % 100 < NEG_VAL_SHARE * 100 else "train"
+        stem = f"neg_{src.parent.name}_{src.stem}"
+        img = ImageOps.exif_transpose(Image.open(src)).convert("RGB")
+        img.thumbnail((MAX_SIDE, MAX_SIDE))
+        img.save(OUT / "images" / split / f"{stem}.jpg", quality=92)
+        (OUT / "labels" / split / f"{stem}.txt").write_text("")
+        stats[f"{split}_negatives"] += 1
+
+
 def main():
     import sys
     sys.stdout.reconfigure(encoding="utf-8")
@@ -86,6 +104,7 @@ def main():
             print(f"[{source}] нет {ann} — пропускаю")
             continue
         convert(source, ann, img_dir, split, stats)
+    add_negatives(stats)
     (OUT / "data.yaml").write_text(
         f"path: {OUT.as_posix()}\ntrain: images/train\nval: images/val\nnames:\n  0: ripe\n  1: unripe\n",
         encoding="utf-8")

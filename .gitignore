@@ -17,6 +17,7 @@ data/raw/*
 data/hidden_test/*
 # Собирается ml/prepare_dataset.py из data/raw
 data/tomato_yolo/
+data/eval_sets/
 !data/**/.gitkeep
 
 # Android
