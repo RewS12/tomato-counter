@@ -37,3 +37,6 @@ brain/.obsidian/workspace*.json
 Thumbs.db
 .idea/
 .vscode/
+
+# Секреты сервера (ADMIN_TOKEN)
+server/.env

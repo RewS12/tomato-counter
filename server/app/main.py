@@ -4,27 +4,45 @@
     uvicorn app.main:app --host 0.0.0.0 --port 8000
 """
 import base64
+import hashlib
+import hmac
+import os
+import re
+import threading
+import uuid
 from contextlib import asynccontextmanager
 from io import BytesIO
 from pathlib import Path
 
 import cv2
 import numpy as np
-from fastapi import FastAPI, File, HTTPException, Query, UploadFile
+from fastapi import FastAPI, File, Form, Header, HTTPException, Query, UploadFile
 from fastapi.responses import HTMLResponse
 from PIL import Image, ImageOps
 from pydantic import BaseModel
 
+from . import config
 from .detector import Detector, draw
 
 detector: Detector | None = None
+model_sha256 = ""
+_swap_lock = threading.Lock()  # одна замена модели за раз
+
+
+def sha256_of(path: str) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    global detector
-    detector = Detector()
+    global detector, model_sha256
+    detector = Detector(config.MODEL_PATH)
     detector.warmup()
+    model_sha256 = sha256_of(detector.model_path)
     yield
 
 
@@ -63,6 +81,7 @@ def read_image(data: bytes) -> np.ndarray:
 @app.get("/health")
 def health():
     return {"status": "ok", "model": Path(detector.model_path).name, "mode": detector.mode,
+            "sha256": model_sha256[:12],
             "classes": {detector.names[i]: c for i, c in detector.class_map.items()}}
 
 
@@ -79,6 +98,72 @@ def detect(image: UploadFile = File(...), draw_result: bool = Query(False, alias
         width=result.width, height=result.height, model=Path(detector.model_path).name,
         mode=detector.mode, ms=result.ms, image_b64=image_b64,
     )
+
+
+_MODEL_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}\.pt$")
+
+
+def require_admin(authorization: str | None) -> None:
+    """Bearer-токен из ADMIN_TOKEN. Без токена (или со слишком коротким) эндпоинт будто не существует."""
+    if len(config.ADMIN_TOKEN) < config.ADMIN_MIN_TOKEN_LEN:
+        raise HTTPException(404, "Not Found")
+    if not authorization or not hmac.compare_digest(authorization.encode(), f"Bearer {config.ADMIN_TOKEN}".encode()):
+        raise HTTPException(401, "Неверный токен", headers={"WWW-Authenticate": "Bearer"})
+
+
+@app.post("/admin/model")
+def upload_model(
+    weights: UploadFile = File(..., description="веса YOLO (.pt)"),
+    name: str | None = Form(None, description="имя файла в models/, по умолчанию — имя загруженного"),
+    allow_stub: bool = Form(False, description="разрешить модель без классов зрелости"),
+    authorization: str | None = Header(None),
+):
+    """Загрузить веса и сразу переключить сервер на них (без перезапуска).
+
+    Модель сначала загружается и прогревается из временного файла; если она битая или в ней нет
+    классов зрелости, старая продолжает работать. Активная модель записывается в models/ACTIVE.
+    """
+    global detector, model_sha256
+    require_admin(authorization)
+    name = name or weights.filename or ""
+    if not _MODEL_NAME.match(name):
+        raise HTTPException(400, "Имя файла: латиница, цифры, _.- и окончание .pt (например tomato_v3.pt)")
+
+    config.MODELS_DIR.mkdir(parents=True, exist_ok=True)
+    limit = config.MAX_MODEL_MB * 1024 * 1024
+    with _swap_lock:
+        tmp = config.MODELS_DIR / f".upload-{uuid.uuid4().hex}.pt"
+        try:
+            size = 0
+            with open(tmp, "wb") as out:
+                while chunk := weights.file.read(1 << 20):
+                    size += len(chunk)
+                    if size > limit:
+                        raise HTTPException(413, f"Файл больше {config.MAX_MODEL_MB} МБ")
+                    out.write(chunk)
+            try:
+                new = Detector(str(tmp))
+                new.warmup()
+            except Exception as e:
+                raise HTTPException(400, f"Не удалось загрузить модель: {type(e).__name__}: {e}")
+            if new.mode != "trained" and not allow_stub:
+                raise HTTPException(400, f"В модели нет классов зрелости (ripe/unripe/green...): {list(new.names.values())}")
+
+            target = config.MODELS_DIR / name
+            os.replace(tmp, target)
+            new.model_path = str(target)
+            active_tmp = config.MODELS_DIR / ".ACTIVE.tmp"
+            active_tmp.write_text(name, encoding="utf-8")
+            os.replace(active_tmp, config.ACTIVE_FILE)
+
+            previous = Path(detector.model_path).name if detector else None
+            detector, model_sha256 = new, sha256_of(str(target))
+        finally:
+            tmp.unlink(missing_ok=True)
+
+    return {"status": "ok", "previous": previous, "model": name, "mode": detector.mode,
+            "sha256": model_sha256, "size_mb": round(size / 1024 / 1024, 1),
+            "classes": {detector.names[i]: c for i, c in detector.class_map.items()}}
 
 
 @app.get("/", response_class=HTMLResponse)
