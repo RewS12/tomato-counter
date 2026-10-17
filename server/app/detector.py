@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 
 import cv2
 import numpy as np
+import torch
 from ultralytics import YOLO
 
 from . import config, ripeness
@@ -66,6 +67,8 @@ class Detector:
         else:
             self.class_map = {i: None for i, n in self.names.items() if n in config.STUB_CLASSES}
         self._lock = threading.Lock()  # YOLO.predict не потокобезопасен
+        requested = (config.DEVICE or "").lower()
+        self.device = "cpu" if requested == "cpu" else ("cuda" if torch.cuda.is_available() else "cpu")
 
     def warmup(self) -> None:
         self.detect(np.zeros((640, 640, 3), dtype=np.uint8))

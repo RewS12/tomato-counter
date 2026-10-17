@@ -45,8 +45,24 @@
     <string name="about_note">Цвет и рамки — визуальная подсказка, а не подтверждение зрелости или безопасности. Результат стоит проверять вручную.</string>
 
     <string name="nav_analysis">Анализ</string>
+    <string name="nav_live">Видео</string>
     <string name="nav_server">Сервер</string>
     <string name="nav_about">О проекте</string>
 
     <string name="idle">Сделайте фото или выберите изображение — результат появится здесь.</string>
+
+    <string name="live_kicker">РЕАЛЬНОЕ ВРЕМЯ</string>
+    <string name="live_title">Живое видео</string>
+    <string name="live_hint">Наведите камеру на томаты</string>
+    <string name="live_start">Запустить</string>
+    <string name="live_stop">Остановить</string>
+    <string name="live_connecting">Подключаюсь к серверу…</string>
+    <string name="live_connected">Поток подключён</string>
+    <string name="live_ready">Нажмите «Запустить»</string>
+    <string name="live_idle">ожидание</string>
+    <string name="live_stopped">Остановлено</string>
+    <string name="live_permission">Нужно разрешение на камеру</string>
+    <string name="live_total">ВСЕГО</string>
+    <string name="live_ripe">ЗРЕЛЫХ</string>
+    <string name="live_unripe">НЕЗРЕЛЫХ</string>
 </resources>

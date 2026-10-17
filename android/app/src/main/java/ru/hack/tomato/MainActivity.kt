@@ -1,16 +1,25 @@
 package ru.hack.tomato
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
+import android.util.Size
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import androidx.activity.ComponentActivity
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.ImageProxy
+import androidx.camera.core.resolutionselector.ResolutionSelector
+import androidx.camera.core.resolutionselector.ResolutionStrategy
+import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.core.content.edit
@@ -22,11 +31,26 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import ru.hack.tomato.databinding.ActivityMainBinding
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.math.roundToInt
 
 class MainActivity : ComponentActivity() {
     private lateinit var binding: ActivityMainBinding
     private val prefs by lazy { getSharedPreferences("settings", MODE_PRIVATE) }
+
+    private val cameraExecutor: ExecutorService = Executors.newSingleThreadExecutor()
+    private var cameraProvider: ProcessCameraProvider? = null
+    private var streamClient: LiveStreamClient? = null
+    private var liveRunning = false
+    private var liveGeneration = 0
+    private val frameInFlight = AtomicBoolean(false)
+
+    @Volatile
+    private var pendingFrame: Bitmap? = null
 
     /** Файл, куда системная камера кладёт снимок. */
     private val captureUri: Uri by lazy {
@@ -42,6 +66,15 @@ class MainActivity : ComponentActivity() {
         if (uri != null) process(uri)
     }
 
+    private val cameraPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) {
+            startLive()
+        } else {
+            setLiveStatus(getString(R.string.live_permission))
+            binding.liveStartStopButton.text = getString(R.string.live_start)
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -51,8 +84,29 @@ class MainActivity : ComponentActivity() {
         bindServer()
         bindNavigation()
         bindActions()
+        bindLive()
         // Тихо проверяем доступность сервера, не блокируя экран.
         lifecycleScope.launch { checkServer(silent = true) }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        if (binding.bottomNav.selectedItemId == R.id.nav_live && !liveRunning &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+        ) {
+            startLive()
+        }
+    }
+
+    override fun onStop() {
+        stopLive()
+        super.onStop()
+    }
+
+    override fun onDestroy() {
+        stopLive()
+        cameraExecutor.shutdown()
+        super.onDestroy()
     }
 
     private fun applyWindowInsets() {
@@ -81,6 +135,7 @@ class MainActivity : ComponentActivity() {
         binding.bottomNav.setOnItemSelectedListener { item ->
             when (item.itemId) {
                 R.id.nav_analysis -> showScreen(Screen.ANALYSIS)
+                R.id.nav_live -> showScreen(Screen.LIVE)
                 R.id.nav_server -> showScreen(Screen.SERVER)
                 R.id.nav_about -> showScreen(Screen.ABOUT)
             }
@@ -118,11 +173,178 @@ class MainActivity : ComponentActivity() {
         binding.aboutSiteButton.setOnClickListener { openSite() }
     }
 
+    private fun bindLive() {
+        binding.liveStartStopButton.setOnClickListener {
+            if (liveRunning) stopLive() else startLive()
+        }
+    }
+
     private fun showScreen(screen: Screen) {
         binding.analysisScroll.visibility = if (screen == Screen.ANALYSIS) View.VISIBLE else View.GONE
         binding.serverScroll.visibility = if (screen == Screen.SERVER) View.VISIBLE else View.GONE
         binding.aboutScroll.visibility = if (screen == Screen.ABOUT) View.VISIBLE else View.GONE
+        binding.liveContainer.visibility = if (screen == Screen.LIVE) View.VISIBLE else View.GONE
+        if (screen == Screen.LIVE) {
+            // selectedItemId обновляется после callback — стартуем на следующем кадре цикла.
+            binding.root.post {
+                if (binding.bottomNav.selectedItemId == R.id.nav_live && !liveRunning) startLive()
+            }
+        } else {
+            stopLive()
+        }
         if (screen != Screen.SERVER) hideKeyboard()
+    }
+
+    private fun startLive() {
+        if (liveRunning) return
+        if (binding.bottomNav.selectedItemId != R.id.nav_live) return
+        val url = serverUrl() ?: return
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            setLiveStatus(getString(R.string.live_permission))
+            binding.liveStartStopButton.text = getString(R.string.live_start)
+            cameraPermission.launch(Manifest.permission.CAMERA)
+            return
+        }
+
+        binding.streamView.clear()
+        binding.liveHint.visibility = View.VISIBLE
+        binding.liveTotal.text = "0"
+        binding.liveRipe.text = "0"
+        binding.liveUnripe.text = "0"
+        binding.liveStats.text = getString(R.string.live_idle)
+        binding.liveStatus.text = getString(R.string.live_connecting)
+        binding.liveStartStopButton.text = getString(R.string.live_stop)
+        liveRunning = true
+        frameInFlight.set(false)
+        val generation = ++liveGeneration
+
+        streamClient = LiveStreamClient(LiveStreamClient.streamUrl(url), object : LiveStreamClient.Listener {
+            override fun onOpen() {
+                runOnUiThread {
+                    if (generation == liveGeneration && liveRunning) {
+                        binding.liveStatus.text = getString(R.string.live_connected)
+                    }
+                }
+            }
+
+            override fun onResult(result: DetectResult) {
+                runOnUiThread {
+                    if (generation != liveGeneration || !liveRunning) return@runOnUiThread
+                    val frame = pendingFrame
+                    pendingFrame = null
+                    if (frame != null && !frame.isRecycled) {
+                        binding.streamView.setFrame(frame, result.objects)
+                        binding.liveHint.visibility = View.GONE
+                        binding.liveTotal.text = result.total.toString()
+                        binding.liveRipe.text = result.ripe.toString()
+                        binding.liveUnripe.text = result.unripe.toString()
+                        binding.liveStats.text =
+                            "${result.model} · ${result.device} · ${result.ms.roundToInt()} мс"
+                    }
+                    frameInFlight.set(false)
+                }
+            }
+
+            override fun onError(message: String) {
+                runOnUiThread {
+                    if (generation != liveGeneration) return@runOnUiThread
+                    pendingFrame?.let { if (!it.isRecycled) it.recycle() }
+                    pendingFrame = null
+                    frameInFlight.set(false)
+                    if (liveRunning) {
+                        stopLive()
+                        setLiveStatus("Ошибка: $message")
+                    }
+                }
+            }
+
+            override fun onClosed() {
+                runOnUiThread {
+                    if (generation != liveGeneration) return@runOnUiThread
+                    if (liveRunning) {
+                        stopLive()
+                        setLiveStatus("Соединение закрыто")
+                    }
+                }
+            }
+        }).also { it.connect() }
+
+        startCamera()
+    }
+
+    private fun startCamera() {
+        val future = ProcessCameraProvider.getInstance(this)
+        future.addListener({
+            if (!liveRunning) return@addListener
+            try {
+                val provider = future.get()
+                cameraProvider = provider
+                val resolution = ResolutionSelector.Builder()
+                    .setResolutionStrategy(
+                        ResolutionStrategy(
+                            Size(640, 480),
+                            ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER,
+                        )
+                    )
+                    .build()
+                val analysis = ImageAnalysis.Builder()
+                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                    .setOutputImageRotationEnabled(true)
+                    .setResolutionSelector(resolution)
+                    .build()
+                analysis.setAnalyzer(cameraExecutor) { image -> onFrame(image) }
+                provider.unbindAll()
+                provider.bindToLifecycle(this, CameraSelector.DEFAULT_BACK_CAMERA, analysis)
+            } catch (exc: Exception) {
+                stopLive()
+                setLiveStatus("Камера: ${exc.message ?: "недоступна"}")
+            }
+        }, ContextCompat.getMainExecutor(this))
+    }
+
+    private fun onFrame(image: ImageProxy) {
+        try {
+            if (!liveRunning || streamClient?.isOpen != true || frameInFlight.get()) return
+            val frame = image.toBitmap()
+            val jpeg = ByteArrayOutputStream().use { out ->
+                frame.compress(Bitmap.CompressFormat.JPEG, 60, out)
+                out.toByteArray()
+            }
+            pendingFrame = frame
+            frameInFlight.set(true)
+            if (streamClient?.sendJpeg(jpeg) != true) {
+                frameInFlight.set(false)
+                pendingFrame = null
+                if (!frame.isRecycled) frame.recycle()
+            }
+        } catch (exc: Exception) {
+            frameInFlight.set(false)
+            pendingFrame?.let { if (!it.isRecycled) it.recycle() }
+            pendingFrame = null
+            runOnUiThread { setLiveStatus("Кадр: ${exc.message ?: "ошибка"}") }
+        } finally {
+            image.close()
+        }
+    }
+
+    private fun stopLive() {
+        if (!liveRunning) return
+        liveRunning = false
+        liveGeneration++
+        streamClient?.close()
+        streamClient = null
+        cameraProvider?.unbindAll()
+        cameraProvider = null
+        frameInFlight.set(false)
+        pendingFrame?.let { if (!it.isRecycled) it.recycle() }
+        pendingFrame = null
+        binding.liveStartStopButton.text = getString(R.string.live_start)
+        binding.liveStatus.text = getString(R.string.live_stopped)
+        binding.liveStats.text = getString(R.string.live_idle)
+    }
+
+    private fun setLiveStatus(text: String) {
+        binding.liveStatus.text = text
     }
 
     /** Нормализует и запоминает адрес сервера. null — если адрес не введён. */
@@ -231,7 +453,7 @@ class MainActivity : ComponentActivity() {
             ?.hideSoftInputFromWindow(binding.root.windowToken, 0)
     }
 
-    private enum class Screen { ANALYSIS, SERVER, ABOUT }
+    private enum class Screen { ANALYSIS, LIVE, SERVER, ABOUT }
 
     private companion object {
         const val KEY_URL = "server_url"

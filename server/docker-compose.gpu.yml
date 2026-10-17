@@ -1,0 +1,10 @@
+# GPU-режим: CUDA-сборка torch + проброс NVIDIA GPU в контейнер.
+# Запуск: docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build
+services:
+  server:
+    build:
+      args:
+        TORCH_INDEX_URL: https://download.pytorch.org/whl/cu128
+    environment:
+      DEVICE: "0"
+    gpus: all

@@ -12,6 +12,9 @@ models/*
 runs/
 runs_*.log
 
+# Локальные секреты сервера
+server/.env
+
 # Данные (большие файлы не коммитим; hidden_test — не показываем никому)
 data/raw/*
 data/hidden_test/*

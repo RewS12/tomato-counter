@@ -26,6 +26,7 @@ data class DetectResult(
     val objects: List<Detection>,
     val model: String,
     val mode: String,
+    val device: String,
     val ms: Double,
 )
 
@@ -60,7 +61,7 @@ object DetectApi {
     suspend fun health(baseUrl: String): String = request {
         val conn = open("$baseUrl/health", timeoutMs = 5_000)
         val json = JSONObject(readBody(conn))
-        "Сервер OK · ${json.optString("model")} (${json.optString("mode")})"
+        "Сервер OK · ${json.optString("model")} (${json.optString("mode")}, ${json.optString("device", "cpu")})"
     }
 
     suspend fun detect(baseUrl: String, jpeg: ByteArray): DetectResult = request {
@@ -101,9 +102,12 @@ object DetectApi {
             objects = objects,
             model = json.optString("model"),
             mode = json.optString("mode"),
+            device = json.optString("device", "cpu"),
             ms = json.optDouble("ms"),
         )
     }
+
+    fun parseStream(json: String): DetectResult = parse(JSONObject(json))
 
     private fun open(url: String, timeoutMs: Int) = (URL(url).openConnection() as HttpURLConnection).apply {
         connectTimeout = 5_000

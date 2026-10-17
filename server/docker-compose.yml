@@ -1,11 +1,15 @@
 services:
   server:
-    build: .
+    build:
+      context: .
+      args:
+        TORCH_INDEX_URL: ${TORCH_INDEX_URL:-https://download.pytorch.org/whl/cpu}
     container_name: tomato-server
     ports:
       - "8002:8000"
     environment:
       DEVICE: cpu
+      MODEL_ADMIN_TOKEN: ${MODEL_ADMIN_TOKEN:-}
     volumes:
       # config.py в контейнере ищет веса в /models (ROOT = /)
       - ../models:/models

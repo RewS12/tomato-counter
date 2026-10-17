@@ -5,6 +5,10 @@
         android:icon="@drawable/ic_camera"
         android:title="@string/nav_analysis" />
     <item
+        android:id="@+id/nav_live"
+        android:icon="@drawable/ic_video"
+        android:title="@string/nav_live" />
+    <item
         android:id="@+id/nav_server"
         android:icon="@drawable/ic_server"
         android:title="@string/nav_server" />
